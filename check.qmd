@@ -1,0 +1,128 @@
+---
+title: "Kidney Data Analysis"
+author: "Emmanuel Ikhimwin_test"
+date: "2024-09-03"
+format: docx
+---
+
+# Load required libraries
+```{r}
+# Load required libraries
+rm(list= ls())
+#library(tidyverse) # For data manipulation and visualization
+library(dplyr)
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(knitr) # For creating tables
+library(kableExtra)
+library(tibble)
+#library(caret)
+set.seed(123)
+
+Original_Data <- read.csv("C:\\Users\\maspe\\OneDrive\\Documents\\Ben_Practice\\KidneyData.csv")
+
+sample_data <- sample(1:nrow(Original_Data), 0.2*nrow(Original_Data), replace = F)
+
+Test_data <- Original_Data[sample_data,]
+
+Train_data <- Original_Data[-sample_data,]
+
+summary(Train_data)
+Train_data$KidneyDisease <- factor(Train_data$KidneyDisease)
+
+
+
+
+
+
+#data exploration
+boxplot(Train_data$Age, main="Boxplot for Age", horizontal=TRUE)
+#data exploration
+boxplot(Train_data$Cholesterol, main="Boxplot for Cholestoral", horizontal=TRUE)
+
+boxplot(Train_data$BloodPressure, main="Boxplot for BloodPressure", horizontal=TRUE)
+
+boxplot(Train_data$ArsenicConcentration, main="Boxplot for ArsenicConcentration", horizontal=TRUE)
+
+
+ch_feature <- c("PatientID","Gender","SmokingStatus","KidneyDisease")
+all_features <- c(names(Train_data))
+all_num_features <- setdiff(all_features,ch_feature)
+
+Corr_matrix <- cor(Train_data %>% select(all_num_features))
+
+
+# Create a correlation matrix table without cell_spec
+Corr_matrix_styled <- Corr_matrix %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "Variable")
+
+kable(Corr_matrix_styled, caption = "Correlation Matrix of Numerical Features") %>%
+  kable_styling(full_width = FALSE) %>%
+  column_spec(1, border_left = TRUE) %>%
+  column_spec(2:ncol(Corr_matrix_styled), border_right = TRUE)
+
+
+
+
+
+# Explore the distribution of the target variable
+for (num_feature in all_num_features)
+  
+{
+# Boxplot for Numerical1 vs Target
+plot <- ggplot(Train_data, aes_string(x = "KidneyDisease", y = num_feature, fill = "KidneyDisease")) + 
+  geom_boxplot() + 
+  theme_minimal() + 
+  ggtitle(paste("Boxplot of", num_feature, "by KidneyDisease"))
+
+print(plot)
+}
+
+
+# build model
+Train_data2 = Train_data %>% select(-PatientID)
+
+# Train the logistic regression model
+model <- glm(KidneyDisease ~ ., data = Train_data2, family = binomial)
+
+# Display the model summary
+summary(model)
+
+model2 <-glm(KidneyDisease ~ BloodPressure + ElectricConductivity +pH + DissolvedOxygen + Turbidity + TotalDissolvedSolids,
+             data = Train_data2, family = binomial)
+
+summary(model2)
+
+#prediction
+
+# Predict on the test data
+predictions <- predict(model2, newdata = Test_data, type = "response")
+
+# Convert probabilities to binary predictions
+predicted_classes <- ifelse(predictions > 0.5, 1, 0)
+predicted_classes <- factor(predicted_classes, levels = c(0, 1))
+observed <- Test_data$KidneyDisease
+
+# Confusion Matrix
+table(predicted_classes, observed)
+
+
+# Calculate Accuracy, Precision
+accuracy <- mean(predicted_classes == observed)
+print(paste("Accuracy:", accuracy))
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
